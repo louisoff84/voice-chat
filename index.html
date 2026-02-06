@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MC Voice Chat</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #2c3e50; color: white; text-align: center; }
+        .status { padding: 20px; border-radius: 10px; background: #34495e; display: inline-block; margin-top: 50px; }
+    </style>
+</head>
+<body>
+    <div class="status">
+        <h1>MC Voice Chat</h1>
+        <p id="display-name">Connexion en cours...</p>
+        <div id="active-calls"></div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('user');
+        document.getElementById('display-name').innerText = "Connecté en tant que : " + username;
+
+        // Initialisation de PeerJS avec l'ID du joueur Minecraft
+        const peer = new Peer("mc-voice-" + username);
+
+        peer.on('open', (id) => {
+            console.log('ID PeerJS : ' + id);
+        });
+
+        // Gérer les appels entrants
+        peer.on('call', (call) => {
+            navigator.mediaDevices.getUserMedia({video: false, audio: true}).then((stream) => {
+                call.answer(stream);
+                call.on('stream', (remoteStream) => {
+                    const audio = document.createElement('audio');
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                });
+            });
+        });
+
+        // Note : Pour appeler quelqu'un, il faudrait une base de données (type Firebase) 
+        // qui liste les joueurs connectés pour qu'ils s'appellent automatiquement.
+    </script>
+</body>
+</html>
