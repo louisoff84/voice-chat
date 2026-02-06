@@ -1,46 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>MC Voice Chat</title>
+    <meta charset="UTF-8">
+    <title>Minecraft Voice Chat</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #2c3e50; color: white; text-align: center; }
-        .status { padding: 20px; border-radius: 10px; background: #34495e; display: inline-block; margin-top: 50px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1e1e2e; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #313244; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 350px; }
+        .status-dot { height: 12px; width: 12px; background-color: #fab387; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background-color: #a6e3a1; }
+        button { background: #89b4fa; border: none; padding: 10px 20px; border-radius: 5px; color: #1e1e2e; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #b4befe; }
+        #logs { font-size: 0.8rem; color: #9399b2; margin-top: 15px; text-align: left; overflow-y: auto; max-height: 100px; }
     </style>
 </head>
 <body>
-    <div class="status">
-        <h1>MC Voice Chat</h1>
-        <p id="display-name">Connexion en cours...</p>
-        <div id="active-calls"></div>
-    </div>
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('user');
-        document.getElementById('display-name').innerText = "Connecté en tant que : " + username;
+<div class="card">
+    <h2>MC Voice Connect</h2>
+    <p><span id="dot" class="status-dot"></span> <span id="status">Initialisation...</span></p>
+    <h3 id="player-name">Joueur</h3>
+    <button onclick="startVoice()">Activer mon micro</button>
+    <div id="logs"></div>
+</div>
 
-        // Initialisation de PeerJS avec l'ID du joueur Minecraft
-        const peer = new Peer("mc-voice-" + username);
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const username = urlParams.get('user') || "Inconnu";
+    document.getElementById('player-name').innerText = username;
 
-        peer.on('open', (id) => {
-            console.log('ID PeerJS : ' + id);
+    const log = (msg) => {
+        const div = document.getElementById('logs');
+        div.innerHTML += `<div>> ${msg}</div>`;
+        console.log(msg);
+    };
+
+    // On crée un ID unique pour ce joueur
+    const peer = new Peer('mc-voice-' + username);
+    let myStream;
+
+    peer.on('open', (id) => {
+        document.getElementById('status').innerText = "En ligne (Prêt)";
+        document.getElementById('dot').classList.add('online');
+        log("Connecté au réseau PeerJS");
+    });
+
+    // ÉCOUTER LES APPELS ENTRANTS
+    peer.on('call', (call) => {
+        log("Appel entrant de : " + call.peer);
+        call.answer(myStream); // Répondre avec notre micro
+        
+        call.on('stream', (remoteStream) => {
+            playStream(remoteStream);
         });
+    });
 
-        // Gérer les appels entrants
-        peer.on('call', (call) => {
-            navigator.mediaDevices.getUserMedia({video: false, audio: true}).then((stream) => {
-                call.answer(stream);
-                call.on('stream', (remoteStream) => {
-                    const audio = document.createElement('audio');
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                });
-            });
+    async function startVoice() {
+        try {
+            myStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false});
+            log("Micro activé !");
+            
+            // Note : Dans une version réelle, il faudrait ici une liste des joueurs
+            // fournis par Skript pour les appeler un par un.
+            // Exemple manuel pour tester avec un ami nommé "Bob" :
+            // callPlayer("Bob");
+            
+        } catch (err) {
+            log("Erreur micro : " + err);
+        }
+    }
+
+    function callPlayer(targetName) {
+        if (!myStream) return alert("Active ton micro d'abord !");
+        const call = peer.call('mc-voice-' + targetName, myStream);
+        call.on('stream', (remoteStream) => {
+            playStream(remoteStream);
         });
+        log("Appel de " + targetName + "...");
+    }
 
-        // Note : Pour appeler quelqu'un, il faudrait une base de données (type Firebase) 
-        // qui liste les joueurs connectés pour qu'ils s'appellent automatiquement.
-    </script>
+    function playStream(stream) {
+        const audio = document.createElement('audio');
+        audio.srcObject = stream;
+        audio.autoplay = true;
+        document.body.appendChild(audio);
+        log("Son reçu et en lecture.");
+    }
+</script>
 </body>
 </html>
