@@ -1,90 +1,68 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Voice Chat</title>
+    <title>VoiceChat - LouisOff84</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1e1e2e; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #313244; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 350px; }
-        .status-dot { height: 12px; width: 12px; background-color: #fab387; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .online { background-color: #a6e3a1; }
-        button { background: #89b4fa; border: none; padding: 10px 20px; border-radius: 5px; color: #1e1e2e; font-weight: bold; cursor: pointer; margin-top: 20px; }
-        button:hover { background: #b4befe; }
-        #logs { font-size: 0.8rem; color: #9399b2; margin-top: 15px; text-align: left; overflow-y: auto; max-height: 100px; }
+        body { background: #0f0f0f; color: #e0e0e0; font-family: sans-serif; text-align: center; padding-top: 100px; }
+        .card { background: #1a1a1a; padding: 40px; border-radius: 20px; display: inline-block; border: 1px solid #333; }
+        .btn-mic { background: #007bff; color: white; border: none; padding: 15px 30px; border-radius: 50px; font-size: 1.2em; cursor: pointer; }
+        .pulse { animation: pulse-red 2s infinite; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 0, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>MC Voice Connect</h2>
-    <p><span id="dot" class="status-dot"></span> <span id="status">Initialisation...</span></p>
-    <h3 id="player-name">Joueur</h3>
-    <button onclick="startVoice()">Activer mon micro</button>
-    <div id="logs"></div>
+    <h2 id="name-tag">Chargement...</h2>
+    <p id="status">Clique sur le bouton pour rejoindre le chat vocal du serveur.</p>
+    <button id="start" class="btn-mic">ACTIVER MON MICRO</button>
 </div>
 
 <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const username = urlParams.get('user') || "Inconnu";
-    document.getElementById('player-name').innerText = username;
+    const params = new URLSearchParams(window.location.search);
+    const username = params.get('user') || "Inconnu";
+    document.getElementById('name-tag').innerText = username;
 
-    const log = (msg) => {
-        const div = document.getElementById('logs');
-        div.innerHTML += `<div>> ${msg}</div>`;
-        console.log(msg);
+    let myStream;
+    const peer = new Peer('mc-voice-' + username); // Ton ID est ton pseudo
+
+    document.getElementById('start').onclick = async () => {
+        try {
+            // 1. Capture du micro
+            myStream = await navigator.mediaDevices.getUserMedia({audio: true});
+            document.getElementById('status').innerText = "🎤 Micro activé - Recherche de joueurs...";
+            document.getElementById('start').style.display = "none";
+
+            // 2. Gestion des appels reçus
+            peer.on('call', (call) => {
+                call.answer(myStream);
+                handleCall(call);
+            });
+
+            // 3. Système d'auto-connexion (Exemple avec un second joueur)
+            // Note: Sans backend, tu dois savoir qui appeler. 
+            // On peut tester en essayant d'appeler les joueurs communs.
+            const playersToTry = ["joueur1", "joueur2", "louisoff84"]; 
+            playersToTry.forEach(p => {
+                if(p !== username.toLowerCase()) {
+                    const call = peer.call('mc-voice-' + p, myStream);
+                    if(call) handleCall(call);
+                }
+            });
+
+        } catch (e) {
+            alert("Erreur micro : " + e);
+        }
     };
 
-    // On crée un ID unique pour ce joueur
-    const peer = new Peer('mc-voice-' + username);
-    let myStream;
-
-    peer.on('open', (id) => {
-        document.getElementById('status').innerText = "En ligne (Prêt)";
-        document.getElementById('dot').classList.add('online');
-        log("Connecté au réseau PeerJS");
-    });
-
-    // ÉCOUTER LES APPELS ENTRANTS
-    peer.on('call', (call) => {
-        log("Appel entrant de : " + call.peer);
-        call.answer(myStream); // Répondre avec notre micro
-        
+    function handleCall(call) {
         call.on('stream', (remoteStream) => {
-            playStream(remoteStream);
+            const audio = new Audio();
+            audio.srcObject = remoteStream;
+            audio.play();
         });
-    });
-
-    async function startVoice() {
-        try {
-            myStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false});
-            log("Micro activé !");
-            
-            // Note : Dans une version réelle, il faudrait ici une liste des joueurs
-            // fournis par Skript pour les appeler un par un.
-            // Exemple manuel pour tester avec un ami nommé "Bob" :
-            // callPlayer("Bob");
-            
-        } catch (err) {
-            log("Erreur micro : " + err);
-        }
-    }
-
-    function callPlayer(targetName) {
-        if (!myStream) return alert("Active ton micro d'abord !");
-        const call = peer.call('mc-voice-' + targetName, myStream);
-        call.on('stream', (remoteStream) => {
-            playStream(remoteStream);
-        });
-        log("Appel de " + targetName + "...");
-    }
-
-    function playStream(stream) {
-        const audio = document.createElement('audio');
-        audio.srcObject = stream;
-        audio.autoplay = true;
-        document.body.appendChild(audio);
-        log("Son reçu et en lecture.");
     }
 </script>
 </body>
