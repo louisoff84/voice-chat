@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Détecteur de Mensonge</title>
+    <style>
+        body {
+            background-color: #0f0f1a;
+            color: #00ffcc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            border: 2px solid #00ffcc;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            background: rgba(20, 20, 40, 0.8);
+            width: 320px;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; text-transform: uppercase; }
+
+        #scanner-zone {
+            width: 200px;
+            height: 250px;
+            margin: 0 auto;
+            border: 3px dashed #00ffcc;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        #scanner-zone:active { background: rgba(0, 255, 204, 0.1); }
+
+        /* Le faisceau laser */
+        #laser {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: #ff0055;
+            box-shadow: 0 0 15px #ff0055;
+            display: none;
+            z-index: 10;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        .status { margin-top: 1.5rem; font-weight: bold; min-height: 24px; }
+
+        #result {
+            font-size: 1.8rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .truth { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+        .lie { color: #ff3333; text-shadow: 0 0 10px #ff3333; }
+
+        .instruction { font-size: 0.8rem; color: #888; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Polygraph v1.0</h1>
+        
+        <div id="scanner-zone" onmousedown="startScan()" onmouseup="stopScan()" ontouchstart="startScan()" ontouchend="stopScan()">
+            <div id="laser"></div>
+            <span id="fingerprint">🖐️<br>MAINTENEZ LE DOIGT</span>
+        </div>
+
+        <div class="status" id="status-text">PRÊT POUR ANALYSE</div>
+        <div id="result">---</div>
+        
+        <p class="instruction">Posez une question à haute voix et maintenez le bouton enfoncé pour scanner.</p>
+    </div>
+
+    <script>
+        let scanInterval;
+        let isScanning = false;
+        const laser = document.getElementById('laser');
+        const statusText = document.getElementById('status-text');
+        const resultDiv = document.getElementById('result');
+        const scannerZone = document.getElementById('scanner-zone');
+
+        function startScan() {
+            if(isScanning) return;
+            isScanning = true;
+
+            // Réinitialisation
+            resultDiv.style.display = 'none';
+            statusText.innerText = "ANALYSE DU RYTHME CARDIAQUE...";
+            statusText.style.color = "#00ffcc";
+            
+            // Animation Laser
+            laser.style.display = 'block';
+            laser.style.animation = "scan 1.5s infinite alternate linear";
+
+            // Simuler une fin après 3 secondes si l'utilisateur maintient
+            scanInterval = setTimeout(() => {
+                revealResult();
+            }, 3000);
+        }
+
+        function stopScan() {
+            if(!isScanning) return;
+            
+            // Si l'utilisateur lâche trop tôt
+            if (resultDiv.style.display !== 'block') {
+                clearTimeout(scanInterval);
+                resetUI();
+                statusText.innerText = "ERREUR : ANALYSE INTERROMPUE";
+                statusText.style.color = "#ff3333";
+            }
+            
+            isScanning = false;
+            laser.style.animation = "none";
+            laser.style.display = 'none';
+        }
+
+        function revealResult() {
+            const isTruth = Math.random() > 0.5;
+            
+            statusText.innerText = "RÉSULTAT FINAL :";
+            resultDiv.style.display = 'block';
+            
+            if (isTruth) {
+                resultDiv.innerText = "VÉRITÉ";
+                resultDiv.className = "truth";
+            } else {
+                resultDiv.innerText = "MENSONGE";
+                resultDiv.className = "lie";
+            }
+        }
+
+        function resetUI() {
+            laser.style.display = 'none';
+            isScanning = false;
+        }
+    </script>
+</body>
+</html>
